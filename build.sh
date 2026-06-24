@@ -2,7 +2,9 @@
 # exit on error
 set -o errexit
 
+# Install the Python dependencies
 pip install -r requirements.txt
 
-python manage.py collectstatic --no-input
-python manage.py migrate
+# Run migrations and collect static files using the right path
+python taskmaster/manage.py collectstatic --no-input
+python taskmaster/manage.py migrate
