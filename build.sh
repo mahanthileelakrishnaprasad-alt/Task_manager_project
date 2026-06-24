@@ -4,7 +4,13 @@ set -o errexit
 
 pip install -r requirements.txt
 
-# Tell Python to look at the exact directory Render is executing from
+echo "=== DEBUGGING PATHS ==="
+echo "Current directory: $(pwd)"
+echo "Listing contents of current directory:"
+ls -la
+echo "======================="
+
+# Set the path explicitly to the current folder
 export PYTHONPATH=$(pwd)
 
 python manage.py collectstatic --no-input
