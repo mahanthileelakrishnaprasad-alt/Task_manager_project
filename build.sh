@@ -4,8 +4,8 @@ set -o errexit
 
 pip install -r requirements.txt
 
-# This line is missing and is required to fix the ModuleNotFoundError:
-export PYTHONPATH=.
+# Look one level up so Python can find the taskmaster folder
+export PYTHONPATH=$PYTHONPATH:..
 
 python manage.py collectstatic --no-input
 python manage.py migrate
