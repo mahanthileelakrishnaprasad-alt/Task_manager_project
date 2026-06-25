@@ -43,29 +43,44 @@
 <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px">
   {% if today_logs %}
     {% for log in today_logs %}
-    <div class="task-card" style="{% if log.completed %}opacity:.7;{% endif %}">
-      <form method="POST" action="{% url 'routine' %}">{% csrf_token %}
-        <input type="hidden" name="action" value="toggle"/>
-        <input type="hidden" name="log_pk" value="{{ log.pk }}"/>
-        <button style="background:none;border:none;font-size:22px;cursor:pointer;flex-shrink:0">
-          {% if log.completed %}✅{% else %}⬜{% endif %}
-        </button>
-      </form>
-      <div class="task-body">
-        <div class="task-title" style="{% if log.completed %}text-decoration:line-through;color:var(--muted){% endif %}">
-          {{ log.routine_task.title }}
-        </div>
-        {% if log.completed and log.completed_at %}
-        <div class="task-meta">Done at {{ log.completed_at|date:"g:i A" }}</div>
-        {% endif %}
-      </div>
-      <div class="task-actions">
+    <div class="task-card" style="flex-direction:column;align-items:stretch;{% if log.completed %}opacity:.7;{% endif %}">
+      <div style="display:flex;gap:14px;align-items:flex-start">
         <form method="POST" action="{% url 'routine' %}">{% csrf_token %}
-          <input type="hidden" name="action" value="delete_routine"/>
-          <input type="hidden" name="pk" value="{{ log.routine_task.pk }}"/>
-          <button class="btn btn-sm btn-ghost-red" onclick="return confirm('Remove this routine task entirely?')">✕</button>
+          <input type="hidden" name="action" value="toggle"/>
+          <input type="hidden" name="log_pk" value="{{ log.pk }}"/>
+          <button style="background:none;border:none;font-size:22px;cursor:pointer;flex-shrink:0">
+            {% if log.completed %}✅{% else %}⬜{% endif %}
+          </button>
         </form>
+        <div class="task-body">
+          <div class="task-title" style="{% if log.completed %}text-decoration:line-through;color:var(--muted){% endif %}">
+            {{ log.routine_task.title }}
+          </div>
+          {% if log.completed and log.completed_at %}
+          <div class="task-meta">Done at {{ log.completed_at|date:"g:i A" }}</div>
+          {% elif log.routine_task.reminder_time %}
+          <div class="task-meta">⏰ reminds daily at {{ log.routine_task.reminder_time|time:"g:i A" }}</div>
+          {% endif %}
+        </div>
+        <div class="task-actions">
+          <button type="button" class="btn btn-sm btn-ghost-purple" onclick="return confirmEdit('edit-routine-{{ log.routine_task.pk }}','routine')">✎ Edit</button>
+          <form method="POST" action="{% url 'routine' %}">{% csrf_token %}
+            <input type="hidden" name="action" value="delete_routine"/>
+            <input type="hidden" name="pk" value="{{ log.routine_task.pk }}"/>
+            <button class="btn btn-sm btn-ghost-red" onclick="return confirm('Remove this routine task entirely?')">✕</button>
+          </form>
+        </div>
       </div>
+      <form method="POST" action="{% url 'routine' %}" class="edit-form" id="edit-routine-{{ log.routine_task.pk }}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="edit_routine"/>
+        <input type="hidden" name="pk" value="{{ log.routine_task.pk }}"/>
+        <label class="field-label">Title</label>
+        <input class="input" type="text" name="title" value="{{ log.routine_task.title }}" required/>
+        <label class="field-label">Daily reminder time (optional)</label>
+        <input class="input" type="time" name="reminder_time" value="{{ log.routine_task.reminder_time|time:'H:i' }}"/>
+        <button type="submit" class="btn btn-teal btn-sm" style="align-self:flex-start">Save Changes</button>
+      </form>
     </div>
     {% endfor %}
   {% else %}
@@ -78,9 +93,12 @@
   <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:14px">+ Add Routine Task</div>
   <form method="POST">{% csrf_token %}
     <input type="hidden" name="action" value="add"/>
-    <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <input class="input" type="text" name="title" placeholder="e.g. Morning workout, Read 30 min…" required autocomplete="off" style="flex:1;min-width:200px"/>
-      <button type="submit" class="btn btn-teal">+ Add</button>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <input class="input" type="text" name="title" placeholder="e.g. Morning workout, Read 30 min…" required autocomplete="off"/>
+      <label class="field-label">Daily reminder time (optional)</label>
+      <input class="input" type="time" name="reminder_time"/>
+      <div style="font-size:11px;color:var(--muted)">If set, you'll get an email reminder at this time every day it's not yet ticked off. Set your reminder email under <a href="{% url 'profile' %}" style="color:var(--teal);font-weight:600">Reminder Settings</a>.</div>
+      <button type="submit" class="btn btn-teal" style="align-self:flex-start">+ Add</button>
     </div>
   </form>
 </div>

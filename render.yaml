@@ -11,3 +11,31 @@ services:
         value: "False"
       - key: PYTHON_VERSION
         value: "3.11.0"
+      # File storage (Cloudinary) — sign up free at https://cloudinary.com
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      # Email reminders — Gmail address + an "App Password" (not your real password)
+      # generated at https://myaccount.google.com/apppasswords
+      - key: EMAIL_HOST_USER
+        sync: false
+      - key: EMAIL_HOST_PASSWORD
+        sync: false
+
+  # Runs every 5 minutes, checks for due task/routine reminders and emails them.
+  # NOTE: this only takes effect if the service is recreated as a Render
+  # "Blueprint" from this file. If the service was created manually in the
+  # dashboard (as this one was), add this Cron Job manually instead:
+  # Render Dashboard → New + → Cron Job → same repo → command below.
+  - type: cron
+    name: personalhub-reminders
+    runtime: python
+    schedule: "*/5 * * * *"
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python manage.py send_reminders"
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.0"

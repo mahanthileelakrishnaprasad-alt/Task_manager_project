@@ -1,0 +1,37 @@
+{% extends "tasks/base.html" %}
+{% block title %}Reminder Settings — PersonalHub{% endblock %}
+
+{% block content %}
+
+<div class="section-head">
+  <span class="section-icon">⚙️</span>
+  <h2>Reminder Settings</h2>
+  <div class="divider"></div>
+</div>
+
+<div class="card">
+  <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:14px">Reminder Email</div>
+  <p style="font-size:13px;color:var(--muted2);line-height:1.6;margin-bottom:14px">
+    When a Task or Daily Routine has a reminder time set, we'll send an email here
+    when it's due. Leave this blank to disable reminder emails.
+  </p>
+  <form method="POST">
+    {% csrf_token %}
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <label class="field-label">Email address</label>
+      <input class="input" type="email" name="reminder_email" value="{{ profile.reminder_email }}" placeholder="you@example.com"/>
+      <button type="submit" class="btn btn-teal" style="align-self:flex-start">Save</button>
+    </div>
+  </form>
+</div>
+
+<div class="card" style="margin-top:20px">
+  <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px">How reminders work</div>
+  <ul style="font-size:13px;color:var(--muted2);line-height:1.8;padding-left:18px">
+    <li>Tasks: set a one-time reminder date &amp; time when adding or editing a task.</li>
+    <li>Daily Routines: set a daily reminder time — it fires once per day until you tick the task off.</li>
+    <li>Reminders are checked periodically in the background, so there can be a short delay (a few minutes) between the set time and the email arriving.</li>
+  </ul>
+</div>
+
+{% endblock %}

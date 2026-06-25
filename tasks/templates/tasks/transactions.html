@@ -39,14 +39,26 @@
     <div style="display:flex;flex-direction:column;gap:10px">
       <input class="input" type="text" name="title" placeholder="Description (e.g. Salary, Groceries…)" required autocomplete="off"/>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <input class="input" type="number" name="amount" placeholder="Amount (₹)" min="0.01" step="0.01" required style="flex:1;min-width:120px"/>
+        <input class="input" type="number" name="amount" id="amount-add" placeholder="Amount (₹)" min="0.01" step="0.01" required style="flex:1;min-width:120px"/>
         <select name="transaction_type" class="input" style="flex:1;min-width:120px">
           <option value="income">💚 Income</option>
           <option value="expense" selected>🔴 Expense</option>
         </select>
       </div>
+      <!-- Amount calculator: +-*/ apply-an-operation buttons -->
+      <div class="calc-row">
+        <button type="button" class="calc-btn" onclick="toggleCalc('calc-add-mul');document.getElementById('calc-op-add').value='mul'">×</button>
+        <button type="button" class="calc-btn" onclick="toggleCalc('calc-add-mul');document.getElementById('calc-op-add').value='div'">÷</button>
+        <button type="button" class="calc-btn" onclick="toggleCalc('calc-add-mul');document.getElementById('calc-op-add').value='add'">+</button>
+        <button type="button" class="calc-btn" onclick="toggleCalc('calc-add-mul');document.getElementById('calc-op-add').value='sub'">−</button>
+      </div>
+      <div class="calc-popover" id="calc-add-mul">
+        <input type="hidden" id="calc-op-add" value="mul"/>
+        <input class="input" type="number" step="0.01" placeholder="value" id="calc-operand-add"/>
+        <button type="button" class="btn btn-sm btn-ghost-teal" onclick="applyCalc('amount-add','calc-operand-add','calc-op-add','calc-add-mul')">Apply</button>
+      </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <select name="category" class="input" id="categorySelect" style="flex:1;min-width:160px" onchange="toggleNewCategory()">
+        <select name="category" class="input" id="categorySelect" style="flex:1;min-width:160px" onchange="toggleNewCategory('categorySelect','newCategoryInput')">
           <option value="">No category</option>
           {% for c in categories %}
           <option value="{{ c.pk }}">{{ c.name }}</option>
@@ -76,24 +88,34 @@
   <a href="?category=none" class="badge {% if selected_category == 'none' %}badge-teal{% else %}badge-blue{% endif %}" style="text-decoration:none">Uncategorized</a>
 </div>
 
-<!-- Manage categories: delete category, or delete all transactions within a category -->
+<!-- Manage categories: edit, delete category, or delete all transactions within a category -->
 <div class="card" style="margin-bottom:24px">
   <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:12px">Manage Categories</div>
-  <div style="display:flex;flex-direction:column;gap:8px">
+  <div style="display:flex;flex-direction:column;gap:10px">
     {% for c in categories %}
-    <div style="display:flex;align-items:center;gap:10px">
-      <span style="flex:1;font-size:13px">{{ c.name }}</span>
-      <form method="POST" onsubmit="return confirm('Delete all transactions in \'{{ c.name }}\'?')">
+    <div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="flex:1;font-size:13px">{{ c.name }}</span>
+        <button type="button" class="btn btn-sm btn-ghost-purple" onclick="return confirmEdit('edit-cat-{{ c.pk }}','category')">✎ Edit</button>
+        <form method="POST" onsubmit="return confirm('Delete all transactions in \'{{ c.name }}\'?')">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="delete_by_category"/>
+          <input type="hidden" name="category_pk" value="{{ c.pk }}"/>
+          <button class="btn btn-sm btn-ghost-gold">🗑 Transactions</button>
+        </form>
+        <form method="POST" onsubmit="return confirm('Delete category \'{{ c.name }}\'? Its transactions will become Uncategorized.')">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="delete_category"/>
+          <input type="hidden" name="category_pk" value="{{ c.pk }}"/>
+          <button class="btn btn-sm btn-ghost-red">✕ Category</button>
+        </form>
+      </div>
+      <form method="POST" class="edit-form" id="edit-cat-{{ c.pk }}">
         {% csrf_token %}
-        <input type="hidden" name="action" value="delete_by_category"/>
+        <input type="hidden" name="action" value="edit_category"/>
         <input type="hidden" name="category_pk" value="{{ c.pk }}"/>
-        <button class="btn btn-sm btn-ghost-gold">🗑 Transactions</button>
-      </form>
-      <form method="POST" onsubmit="return confirm('Delete category \'{{ c.name }}\'? Its transactions will become Uncategorized.')">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="delete_category"/>
-        <input type="hidden" name="category_pk" value="{{ c.pk }}"/>
-        <button class="btn btn-sm btn-ghost-red">✕ Category</button>
+        <input class="input" type="text" name="category_name" value="{{ c.name }}" required/>
+        <button type="submit" class="btn btn-teal btn-sm" style="align-self:flex-start">Save</button>
       </form>
     </div>
     {% endfor %}
@@ -112,24 +134,64 @@
 <div style="display:flex;flex-direction:column;gap:8px">
   {% if transactions %}
     {% for t in transactions %}
-    <div class="task-card">
-      <span style="font-size:20px;flex-shrink:0">{% if t.transaction_type == 'income' %}💚{% else %}🔴{% endif %}</span>
-      <div class="task-body">
-        <div class="task-title">{{ t.title }}</div>
-        {% if t.category %}<span class="badge badge-purple" style="margin-top:4px;display:inline-block">{{ t.category.name }}</span>{% endif %}
-        {% if t.note %}<div class="task-note">{{ t.note }}</div>{% endif %}
-        <div class="task-meta">{{ t.created_at|date:"d M Y, g:i A" }}</div>
+    <div class="task-card" style="flex-direction:column;align-items:stretch">
+      <div style="display:flex;align-items:flex-start;gap:14px">
+        <span style="font-size:20px;flex-shrink:0">{% if t.transaction_type == 'income' %}💚{% else %}🔴{% endif %}</span>
+        <div class="task-body">
+          <div class="task-title">{{ t.title }}</div>
+          {% if t.category %}<span class="badge badge-purple" style="margin-top:4px;display:inline-block">{{ t.category.name }}</span>{% endif %}
+          {% if t.note %}<div class="task-note">{{ t.note }}</div>{% endif %}
+          <div class="task-meta">{{ t.created_at|date:"d M Y, g:i A" }}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap">
+          <span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14px;color:{% if t.transaction_type == 'income' %}var(--green){% else %}var(--red){% endif %}">
+            {% if t.transaction_type == 'income' %}+{% else %}-{% endif %}₹{{ t.amount|floatformat:0 }}
+          </span>
+          <button type="button" class="btn btn-sm btn-ghost-purple" onclick="return confirmEdit('edit-txn-{{ t.pk }}','transaction')">✎</button>
+          <form method="POST" action="{% url 'transactions' %}">{% csrf_token %}
+            <input type="hidden" name="action" value="delete"/>
+            <input type="hidden" name="pk" value="{{ t.pk }}"/>
+            <button class="btn btn-sm btn-ghost-red" onclick="return confirm('Delete?')">✕</button>
+          </form>
+        </div>
       </div>
-      <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
-        <span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14px;color:{% if t.transaction_type == 'income' %}var(--green){% else %}var(--red){% endif %}">
-          {% if t.transaction_type == 'income' %}+{% else %}-{% endif %}₹{{ t.amount|floatformat:0 }}
-        </span>
-        <form method="POST" action="{% url 'transactions' %}">{% csrf_token %}
-          <input type="hidden" name="action" value="delete"/>
-          <input type="hidden" name="pk" value="{{ t.pk }}"/>
-          <button class="btn btn-sm btn-ghost-red" onclick="return confirm('Delete?')">✕</button>
-        </form>
-      </div>
+      <form method="POST" action="{% url 'transactions' %}" class="edit-form" id="edit-txn-{{ t.pk }}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="edit"/>
+        <input type="hidden" name="pk" value="{{ t.pk }}"/>
+        <label class="field-label">Description</label>
+        <input class="input" type="text" name="title" value="{{ t.title }}" required/>
+        <label class="field-label">Amount</label>
+        <input class="input" type="number" step="0.01" min="0.01" name="amount" id="amount-edit-{{ t.pk }}" value="{{ t.amount }}" required/>
+        <div class="calc-row">
+          <button type="button" class="calc-btn" onclick="toggleCalc('calc-edit-{{ t.pk }}');document.getElementById('calc-op-edit-{{ t.pk }}').value='mul'">×</button>
+          <button type="button" class="calc-btn" onclick="toggleCalc('calc-edit-{{ t.pk }}');document.getElementById('calc-op-edit-{{ t.pk }}').value='div'">÷</button>
+          <button type="button" class="calc-btn" onclick="toggleCalc('calc-edit-{{ t.pk }}');document.getElementById('calc-op-edit-{{ t.pk }}').value='add'">+</button>
+          <button type="button" class="calc-btn" onclick="toggleCalc('calc-edit-{{ t.pk }}');document.getElementById('calc-op-edit-{{ t.pk }}').value='sub'">−</button>
+        </div>
+        <div class="calc-popover" id="calc-edit-{{ t.pk }}">
+          <input type="hidden" id="calc-op-edit-{{ t.pk }}" value="mul"/>
+          <input class="input" type="number" step="0.01" placeholder="value" id="calc-operand-edit-{{ t.pk }}"/>
+          <button type="button" class="btn btn-sm btn-ghost-teal" onclick="applyCalc('amount-edit-{{ t.pk }}','calc-operand-edit-{{ t.pk }}','calc-op-edit-{{ t.pk }}','calc-edit-{{ t.pk }}')">Apply</button>
+        </div>
+        <label class="field-label">Type</label>
+        <select name="transaction_type" class="input">
+          <option value="income" {% if t.transaction_type == 'income' %}selected{% endif %}>💚 Income</option>
+          <option value="expense" {% if t.transaction_type == 'expense' %}selected{% endif %}>🔴 Expense</option>
+        </select>
+        <label class="field-label">Category</label>
+        <select name="category" class="input" id="catSelect-{{ t.pk }}" onchange="toggleNewCategory('catSelect-{{ t.pk }}','newCat-{{ t.pk }}')">
+          <option value="">No category</option>
+          {% for c in categories %}
+          <option value="{{ c.pk }}" {% if t.category and t.category.pk == c.pk %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+          <option value="__new__">+ New category…</option>
+        </select>
+        <input class="input" type="text" name="new_category" id="newCat-{{ t.pk }}" placeholder="New category name" style="display:none"/>
+        <label class="field-label">Note</label>
+        <textarea class="input" name="note" rows="2">{{ t.note }}</textarea>
+        <button type="submit" class="btn btn-teal btn-sm" style="align-self:flex-start">Save Changes</button>
+      </form>
     </div>
     {% endfor %}
   {% else %}
@@ -138,9 +200,9 @@
 </div>
 
 <script>
-function toggleNewCategory(){
-  var sel = document.getElementById('categorySelect');
-  var input = document.getElementById('newCategoryInput');
+function toggleNewCategory(selectId, inputId){
+  var sel = document.getElementById(selectId);
+  var input = document.getElementById(inputId);
   if(sel.value === '__new__'){
     input.style.display = 'block';
     input.required = true;
@@ -149,6 +211,24 @@ function toggleNewCategory(){
     input.required = false;
     input.value = '';
   }
+}
+
+// Applies +-*/ to an amount field using a small popover: pick operator,
+// type a value, hit Apply — the amount field updates immediately.
+function applyCalc(amountFieldId, operandFieldId, opFieldId, popoverId){
+  var amountEl = document.getElementById(amountFieldId);
+  var operand = parseFloat(document.getElementById(operandFieldId).value);
+  var op = document.getElementById(opFieldId).value;
+  var current = parseFloat(amountEl.value) || 0;
+  if(isNaN(operand)) return;
+  var result = current;
+  if(op === 'mul') result = current * operand;
+  else if(op === 'div') { if(operand !== 0) result = current / operand; }
+  else if(op === 'add') result = current + operand;
+  else if(op === 'sub') result = current - operand;
+  amountEl.value = Math.round(result * 100) / 100;
+  document.getElementById(popoverId).classList.remove('open');
+  document.getElementById(operandFieldId).value = '';
 }
 </script>
 

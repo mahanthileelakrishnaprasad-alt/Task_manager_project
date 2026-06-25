@@ -1,7 +1,25 @@
 {% extends "tasks/base.html" %}
+{% load tasks_extras %}
 {% block title %}Users — PersonalHub{% endblock %}
 
 {% block content %}
+
+<!-- Total DB Usage -->
+<div class="section-head">
+  <span class="section-icon">💾</span>
+  <h2>Database Usage</h2>
+  <div class="divider"></div>
+</div>
+<div class="card" style="margin-bottom:28px">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+    <span style="font-size:13px;color:var(--muted2)">{{ total_usage_display }} used of {{ quota_display }}</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--teal)">{{ total_usage_pct }}%</span>
+  </div>
+  <div class="usage-bar-wrap"><div class="usage-bar" style="width:{{ total_usage_pct }}%"></div></div>
+  <div style="font-size:11px;color:var(--muted);margin-top:8px">
+    Estimated from row/file sizes across all users — an approximation, not an exact MySQL measurement.
+  </div>
+</div>
 
 <div class="section-head">
   <span class="section-icon">👥</span>
@@ -50,42 +68,55 @@
 
 <div style="display:flex;flex-direction:column;gap:10px">
   {% for u in approved_users %}
-  <div class="task-card" style="{% if not u.is_active %}opacity:.6;{% endif %}">
-    <span style="font-size:22px;flex-shrink:0">{% if u.is_superuser %}👑{% elif u.is_active %}🟢{% else %}⚪{% endif %}</span>
-    <div class="task-body">
-      <div class="task-title">
-        {{ u.username }}
-        {% if u.is_superuser %}<span class="badge badge-gold" style="margin-left:6px">superuser</span>{% endif %}
-        {% if not u.is_active and not u.is_superuser %}<span class="badge badge-red" style="margin-left:6px">deactivated</span>{% endif %}
+  <div class="task-card" style="flex-direction:column;align-items:stretch;{% if not u.is_active %}opacity:.6;{% endif %}">
+    <div style="display:flex;align-items:flex-start;gap:14px">
+      <span style="font-size:22px;flex-shrink:0">{% if u.is_superuser %}👑{% elif u.is_active %}🟢{% else %}⚪{% endif %}</span>
+      <div class="task-body">
+        <div class="task-title">
+          {{ u.username }}
+          {% if u.is_superuser %}<span class="badge badge-gold" style="margin-left:6px">superuser</span>{% endif %}
+          {% if not u.is_active and not u.is_superuser %}<span class="badge badge-red" style="margin-left:6px">deactivated</span>{% endif %}
+        </div>
+        <div class="task-meta">
+          Joined {{ u.date_joined|date:"d M Y" }}
+          {% if u.email %} · {{ u.email }}{% endif %}
+          {% if u.last_login %} · last login {{ u.last_login|date:"d M Y, g:i A" }}{% endif %}
+        </div>
       </div>
-      <div class="task-meta">
-        Joined {{ u.date_joined|date:"d M Y" }}
-        {% if u.email %} · {{ u.email }}{% endif %}
-        {% if u.last_login %} · last login {{ u.last_login|date:"d M Y, g:i A" }}{% endif %}
+      {% if not u.is_superuser %}
+      <div class="task-actions">
+        {% if u.is_active %}
+        <form method="POST" action="{% url 'users' %}">{% csrf_token %}
+          <input type="hidden" name="action" value="deactivate"/>
+          <input type="hidden" name="pk" value="{{ u.pk }}"/>
+          <button class="btn btn-sm btn-ghost-gold" onclick="return confirm('Deactivate {{ u.username }}? They will be unable to log in.')">⏸ Deactivate</button>
+        </form>
+        {% else %}
+        <form method="POST" action="{% url 'users' %}">{% csrf_token %}
+          <input type="hidden" name="action" value="activate"/>
+          <input type="hidden" name="pk" value="{{ u.pk }}"/>
+          <button class="btn btn-sm btn-ghost-teal">▶ Reactivate</button>
+        </form>
+        {% endif %}
+        <form method="POST" action="{% url 'users' %}">{% csrf_token %}
+          <input type="hidden" name="action" value="reject"/>
+          <input type="hidden" name="pk" value="{{ u.pk }}"/>
+          <button class="btn btn-sm btn-ghost-red" onclick="return confirm('Permanently delete {{ u.username }} and all their data?')">🗑 Delete</button>
+        </form>
       </div>
-    </div>
-    {% if not u.is_superuser %}
-    <div class="task-actions">
-      {% if u.is_active %}
-      <form method="POST" action="{% url 'users' %}">{% csrf_token %}
-        <input type="hidden" name="action" value="deactivate"/>
-        <input type="hidden" name="pk" value="{{ u.pk }}"/>
-        <button class="btn btn-sm btn-ghost-gold" onclick="return confirm('Deactivate {{ u.username }}? They will be unable to log in.')">⏸ Deactivate</button>
-      </form>
-      {% else %}
-      <form method="POST" action="{% url 'users' %}">{% csrf_token %}
-        <input type="hidden" name="action" value="activate"/>
-        <input type="hidden" name="pk" value="{{ u.pk }}"/>
-        <button class="btn btn-sm btn-ghost-teal">▶ Reactivate</button>
-      </form>
       {% endif %}
-      <form method="POST" action="{% url 'users' %}">{% csrf_token %}
-        <input type="hidden" name="action" value="reject"/>
-        <input type="hidden" name="pk" value="{{ u.pk }}"/>
-        <button class="btn btn-sm btn-ghost-red" onclick="return confirm('Permanently delete {{ u.username }} and all their data?')">🗑 Delete</button>
-      </form>
+    </div>
+    {% with usage=usage_by_user|get_item:u.pk %}
+    {% if usage %}
+    <div style="margin-top:10px;padding-left:36px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <span style="font-size:11px;color:var(--muted)">Storage used</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted2)">{{ usage.display }} · {{ usage.pct_of_quota }}% of quota</span>
+      </div>
+      <div class="usage-bar-wrap"><div class="usage-bar" style="width:{{ usage.pct_of_quota }}%"></div></div>
     </div>
     {% endif %}
+    {% endwith %}
   </div>
   {% endfor %}
 </div>

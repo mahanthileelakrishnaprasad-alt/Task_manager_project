@@ -14,20 +14,36 @@
 <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:28px">
   {% if active_tasks %}
     {% for task in active_tasks %}
-    <div class="task-card">
-      <div class="task-body">
-        <div class="task-title">{{ task.title }}</div>
-        {% if task.note %}<div class="task-note">{{ task.note }}</div>{% endif %}
-        <div class="task-meta">Added {{ task.created_at|date:"d M, g:i A" }}</div>
+    <div class="task-card" style="flex-direction:column;align-items:stretch">
+      <div style="display:flex;gap:14px;align-items:flex-start">
+        <div class="task-body">
+          <div class="task-title">{{ task.title }}</div>
+          {% if task.note %}<div class="task-note">{{ task.note }}</div>{% endif %}
+          <div class="task-meta">
+            Added {{ task.created_at|date:"d M, g:i A" }}
+            {% if task.reminder_at %} · ⏰ reminds {{ task.reminder_at|date:"d M, g:i A" }}{% endif %}
+          </div>
+        </div>
+        <div class="task-actions">
+          <form method="POST" action="{% url 'complete_task' task.pk %}">{% csrf_token %}
+            <button class="btn btn-sm btn-ghost-teal">✓ Complete</button>
+          </form>
+          <button type="button" class="btn btn-sm btn-ghost-purple" onclick="return confirmEdit('edit-task-{{ task.pk }}','task')">✎ Edit</button>
+          <form method="POST" action="{% url 'delete_task' task.pk %}">{% csrf_token %}
+            <button class="btn btn-sm btn-ghost-red" onclick="return confirm('Delete this task?')">✕</button>
+          </form>
+        </div>
       </div>
-      <div class="task-actions">
-        <form method="POST" action="{% url 'complete_task' task.pk %}">{% csrf_token %}
-          <button class="btn btn-sm btn-ghost-teal">✓ Complete</button>
-        </form>
-        <form method="POST" action="{% url 'delete_task' task.pk %}">{% csrf_token %}
-          <button class="btn btn-sm btn-ghost-red" onclick="return confirm('Delete this task?')">✕</button>
-        </form>
-      </div>
+      <form method="POST" action="{% url 'edit_task' task.pk %}" class="edit-form" id="edit-task-{{ task.pk }}">
+        {% csrf_token %}
+        <label class="field-label">Title</label>
+        <input class="input" type="text" name="title" value="{{ task.title }}" required/>
+        <label class="field-label">Note</label>
+        <textarea class="input" name="note" rows="2">{{ task.note }}</textarea>
+        <label class="field-label">Reminder (optional — sends an email at this time)</label>
+        <input class="input" type="datetime-local" name="reminder_at" value="{{ task.reminder_at|date:'Y-m-d\TH:i' }}"/>
+        <button type="submit" class="btn btn-teal btn-sm" style="align-self:flex-start">Save Changes</button>
+      </form>
     </div>
     {% endfor %}
   {% else %}
@@ -43,6 +59,9 @@
     <div style="display:flex;flex-direction:column;gap:10px">
       <input class="input" type="text" name="title" placeholder="What do you want to get done?" required autocomplete="off"/>
       <textarea class="input" name="note" placeholder="Add a note (optional)…" rows="2"></textarea>
+      <label class="field-label">Reminder (optional)</label>
+      <input class="input" type="datetime-local" name="reminder_at"/>
+      <div style="font-size:11px;color:var(--muted)">If set, you'll get an email reminder at this time. Set your reminder email under <a href="{% url 'profile' %}" style="color:var(--teal);font-weight:600">Reminder Settings</a>.</div>
       <button type="submit" class="btn btn-teal" style="align-self:flex-start">+ Add Task</button>
     </div>
   </form>

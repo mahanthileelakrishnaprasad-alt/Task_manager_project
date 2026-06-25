@@ -188,6 +188,41 @@ textarea.input{resize:vertical;min-height:60px}
 .treasure-card .task-title{color:#c8a840}
 .treasure-card .task-note{color:#6a5e30}
 .treasure-card .task-meta{color:#5a5025}
+
+/* ── INLINE EDIT FORM (industry-standard "edit in place") ── */
+.edit-form{
+  display:none;margin-top:12px;padding-top:12px;
+  border-top:1px dashed var(--border2);
+  flex-direction:column;gap:8px;
+}
+.edit-form.open{display:flex}
+.field-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+
+/* ── CALCULATOR POPOVER (for transaction amount +-*\/) ── */
+.calc-row{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.calc-btn{
+  width:36px;height:32px;border-radius:6px;border:1px solid var(--border2);
+  background:var(--surface);color:var(--text);font-weight:700;font-size:14px;
+}
+.calc-btn:hover{background:var(--card2)}
+.calc-popover{
+  display:none;gap:6px;margin-top:6px;align-items:center;
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:8px;padding:8px;
+}
+.calc-popover.open{display:flex}
+.calc-popover input{flex:1}
+
+/* ── COPY BUTTON ── */
+.copy-btn{
+  background:rgba(96,165,250,.1);color:var(--blue);border:1px solid var(--blue-dim);
+  font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;
+}
+.copy-btn:hover{background:rgba(96,165,250,.2)}
+
+/* ── USAGE BAR (Users page) ── */
+.usage-bar-wrap{background:var(--surface);border-radius:20px;height:6px;overflow:hidden;margin-top:4px}
+.usage-bar{height:100%;border-radius:20px;background:var(--teal)}
 </style>
 </head>
 <body>
@@ -222,6 +257,9 @@ textarea.input{resize:vertical;min-height:60px}
         <span class="menu-icon">👥</span> Users
       </a>
       {% endif %}
+      <a href="/profile/" class="menu-item {% if '/profile/' in request.path %}active{% endif %}">
+        <span class="menu-icon">⚙️</span> Reminder Settings
+      </a>
     </div>
   </div>
 </nav>
@@ -248,6 +286,35 @@ document.addEventListener('click',function(e){
     document.getElementById('dropMenu').classList.remove('open');
   }
 });
+
+// Industry-standard "edit in place": confirm, then reveal the inline form.
+function confirmEdit(formId, label){
+  if(confirm('Edit this ' + (label || 'item') + '?')){
+    var el = document.getElementById(formId);
+    if(el){ el.classList.toggle('open'); }
+  }
+  return false;
+}
+
+// Copy any text to clipboard, with a small button feedback flash.
+function copyText(text, btn){
+  navigator.clipboard.writeText(text).then(function(){
+    if(btn){
+      var orig = btn.textContent;
+      btn.textContent = '✓ Copied';
+      setTimeout(function(){ btn.textContent = orig; }, 1500);
+    }
+  });
+}
+
+// Calculator popover toggle for transaction amount +-*/ buttons.
+function toggleCalc(popoverId){
+  document.querySelectorAll('.calc-popover.open').forEach(function(el){
+    if(el.id !== popoverId) el.classList.remove('open');
+  });
+  var el = document.getElementById(popoverId);
+  if(el){ el.classList.toggle('open'); }
+}
 </script>
 {% block extra_js %}{% endblock %}
 </body>
