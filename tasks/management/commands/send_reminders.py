@@ -38,8 +38,12 @@ def _send_via_resend(to_email, subject, body):
         },
         method='POST',
     )
-    with urllib.request.urlopen(req, timeout=15) as resp:
-        return json.loads(resp.read())
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            return json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        error_body = e.read().decode('utf-8')
+        raise Exception(f"Resend {e.code}: {error_body}")
 
 
 class Command(BaseCommand):
