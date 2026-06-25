@@ -642,46 +642,41 @@ def profile_view(request):
 # ── Cron webhook (for cron-job.org free external scheduler) ──────────────────
 
 import hmac
-import hashlib
+import threading
 from django.views.decorators.csrf import csrf_exempt
 from django.core import management
-from io import StringIO
 
 CRON_SECRET = os.environ.get('CRON_SECRET', '')
 
 
 def _check_cron_secret(request):
-    """Return True if the request supplies the correct cron secret.
-    Accepts it either as ?key=<secret> in the query string OR as an
-    X-Cron-Key header, whichever cron-job.org is configured to send."""
     secret = CRON_SECRET
     if not secret:
-        return False  # No secret configured — deny all
+        return False
     provided = request.GET.get('key', '') or request.headers.get('X-Cron-Key', '')
-    # Constant-time comparison to prevent timing attacks
     return hmac.compare_digest(provided, secret)
+
+
+def _run_reminders():
+    """Run send_reminders in a background thread so the HTTP response
+    returns immediately and gunicorn doesn't time out waiting for SMTP."""
+    try:
+        management.call_command('send_reminders')
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error('send_reminders failed: %s', e)
 
 
 @csrf_exempt
 def cron_send_reminders(request):
-    """HTTP endpoint that runs the send_reminders management command.
-    Hit this from cron-job.org (or any free scheduler) every 5 minutes.
-    Protect it with CRON_SECRET env var so only your scheduler can trigger it.
-
+    """HTTP endpoint pinged by cron-job.org every 5 minutes.
+    Responds instantly with 200, runs email sending in a background thread.
     URL: /cron/send-reminders/?key=<CRON_SECRET>
     """
     if not _check_cron_secret(request):
         return JsonResponse({'error': 'Forbidden'}, status=403)
 
-    out = StringIO()
-    err = StringIO()
-    try:
-        management.call_command('send_reminders', stdout=out, stderr=err)
-    except Exception as e:
-        return JsonResponse({'error': str(e), 'log': err.getvalue()}, status=500)
+    t = threading.Thread(target=_run_reminders, daemon=True)
+    t.start()
 
-    return JsonResponse({
-        'ok': True,
-        'log': out.getvalue(),
-        'warnings': err.getvalue(),
-    })
+    return JsonResponse({'ok': True, 'msg': 'Reminder job started in background'})
