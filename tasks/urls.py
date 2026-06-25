@@ -25,5 +25,8 @@ urlpatterns = [
     path('transactions/calc/', views.calc_amount, name='calc_amount'),
     # Free external cron webhook (cron-job.org pings this every 5 minutes)
     path('cron/send-reminders/', views.cron_send_reminders, name='cron_send_reminders'),
+    # ... existing paths ...
+    path('health/', views.health_check, name='health_check'),
+
 ]
 

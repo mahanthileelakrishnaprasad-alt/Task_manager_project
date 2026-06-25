@@ -680,3 +680,9 @@ def cron_send_reminders(request):
     t.start()
 
     return JsonResponse({'ok': True, 'msg': 'Reminder job started in background'})
+
+from django.http import HttpResponse
+
+def health_check(request):
+    # A lightweight heartbeat that avoids DB/Template overhead
+    return HttpResponse("OK", status=200)
