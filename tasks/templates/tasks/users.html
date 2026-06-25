@@ -1,0 +1,93 @@
+{% extends "tasks/base.html" %}
+{% block title %}Users — PersonalHub{% endblock %}
+
+{% block content %}
+
+<div class="section-head">
+  <span class="section-icon">👥</span>
+  <h2>Pending Approval</h2>
+  <span class="badge badge-gold">{{ pending_users|length }}</span>
+  <div class="divider"></div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:28px">
+  {% if pending_users %}
+    {% for u in pending_users %}
+    <div class="task-card">
+      <span style="font-size:22px;flex-shrink:0">🆕</span>
+      <div class="task-body">
+        <div class="task-title">{{ u.username }}</div>
+        <div class="task-meta">
+          Requested {{ u.profile.requested_at|date:"d M Y, g:i A" }}
+          {% if u.email %} · {{ u.email }}{% endif %}
+        </div>
+      </div>
+      <div class="task-actions">
+        <form method="POST" action="{% url 'users' %}">{% csrf_token %}
+          <input type="hidden" name="action" value="approve"/>
+          <input type="hidden" name="pk" value="{{ u.pk }}"/>
+          <button class="btn btn-sm btn-ghost-teal">✓ Approve</button>
+        </form>
+        <form method="POST" action="{% url 'users' %}">{% csrf_token %}
+          <input type="hidden" name="action" value="reject"/>
+          <input type="hidden" name="pk" value="{{ u.pk }}"/>
+          <button class="btn btn-sm btn-ghost-red" onclick="return confirm('Reject and permanently delete {{ u.username }}?')">✕ Reject</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty"><div class="ei">✅</div><p>No one is waiting for approval.</p></div>
+  {% endif %}
+</div>
+
+<div class="section-head">
+  <span class="section-icon">📋</span>
+  <h2>All Users</h2>
+  <span class="badge badge-blue">{{ approved_users|length }}</span>
+  <div class="divider"></div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:10px">
+  {% for u in approved_users %}
+  <div class="task-card" style="{% if not u.is_active %}opacity:.6;{% endif %}">
+    <span style="font-size:22px;flex-shrink:0">{% if u.is_superuser %}👑{% elif u.is_active %}🟢{% else %}⚪{% endif %}</span>
+    <div class="task-body">
+      <div class="task-title">
+        {{ u.username }}
+        {% if u.is_superuser %}<span class="badge badge-gold" style="margin-left:6px">superuser</span>{% endif %}
+        {% if not u.is_active and not u.is_superuser %}<span class="badge badge-red" style="margin-left:6px">deactivated</span>{% endif %}
+      </div>
+      <div class="task-meta">
+        Joined {{ u.date_joined|date:"d M Y" }}
+        {% if u.email %} · {{ u.email }}{% endif %}
+        {% if u.last_login %} · last login {{ u.last_login|date:"d M Y, g:i A" }}{% endif %}
+      </div>
+    </div>
+    {% if not u.is_superuser %}
+    <div class="task-actions">
+      {% if u.is_active %}
+      <form method="POST" action="{% url 'users' %}">{% csrf_token %}
+        <input type="hidden" name="action" value="deactivate"/>
+        <input type="hidden" name="pk" value="{{ u.pk }}"/>
+        <button class="btn btn-sm btn-ghost-gold" onclick="return confirm('Deactivate {{ u.username }}? They will be unable to log in.')">⏸ Deactivate</button>
+      </form>
+      {% else %}
+      <form method="POST" action="{% url 'users' %}">{% csrf_token %}
+        <input type="hidden" name="action" value="activate"/>
+        <input type="hidden" name="pk" value="{{ u.pk }}"/>
+        <button class="btn btn-sm btn-ghost-teal">▶ Reactivate</button>
+      </form>
+      {% endif %}
+      <form method="POST" action="{% url 'users' %}">{% csrf_token %}
+        <input type="hidden" name="action" value="reject"/>
+        <input type="hidden" name="pk" value="{{ u.pk }}"/>
+        <button class="btn btn-sm btn-ghost-red" onclick="return confirm('Permanently delete {{ u.username }} and all their data?')">🗑 Delete</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+{% endblock %}

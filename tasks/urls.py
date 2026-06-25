@@ -2,6 +2,10 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    # account status
+    path('pending/', views.pending_approval_view, name='pending_approval'),
+    # users (superuser only)
+    path('users/', views.users_view, name='users'),
     # tasks
     path('task/complete/<int:pk>/', views.complete_task, name='complete_task'),
     path('task/delete/<int:pk>/', views.delete_task, name='delete_task'),

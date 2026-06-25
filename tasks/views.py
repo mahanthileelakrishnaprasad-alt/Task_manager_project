@@ -10,7 +10,29 @@ from django.contrib import messages
 from datetime import date, timedelta
 import os
 
-from .models import Task, UploadedFile, RoutineTask, RoutineLog, Transaction, TransactionCategory
+from .models import Task, UploadedFile, RoutineTask, RoutineLog, Transaction, TransactionCategory, UserProfile
+
+
+def _is_approved(user):
+    """Superusers are always approved. Users without a profile (pre-existing
+    accounts created before this feature existed) are treated as approved."""
+    if user.is_superuser:
+        return True
+    profile = getattr(user, 'profile', None)
+    if profile is None:
+        return True
+    return profile.is_approved
+
+
+def approved_required(view_func):
+    """Like @login_required, but also blocks users pending admin approval,
+    sending them to the waiting-room page instead."""
+    @login_required
+    def wrapper(request, *args, **kwargs):
+        if not _is_approved(request.user):
+            return redirect('pending_approval')
+        return view_func(request, *args, **kwargs)
+    return wrapper
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -38,9 +60,9 @@ def register_view(request):
         form = UserCreationForm(request.POST)
         if form.is_valid():
             user = form.save()
-            login(request, user)
-            messages.success(request, f'Welcome, {user.username}!')
-            return redirect('dashboard')
+            UserProfile.objects.create(user=user, is_approved=False)
+            messages.success(request, 'Registration submitted, waiting for admin approval.')
+            return redirect('login')
         else:
             for field, errors in form.errors.items():
                 for error in errors:
@@ -52,7 +74,7 @@ def register_view(request):
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 
-@login_required
+@approved_required
 def dashboard(request):
     if request.method == 'POST':
         title = request.POST.get('title', '').strip()
@@ -69,9 +91,81 @@ def dashboard(request):
     })
 
 
+@login_required
+def pending_approval_view(request):
+    if _is_approved(request.user):
+        return redirect('dashboard')
+    return render(request, 'tasks/pending_approval.html')
+
+
+# ── User Management (superuser only) ──────────────────────────────────────────
+
+def superuser_required(view_func):
+    @login_required
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_superuser:
+            messages.error(request, "You don't have permission to view that page.")
+            return redirect('dashboard')
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+
+@superuser_required
+def users_view(request):
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        pk = request.POST.get('pk')
+        target = get_object_or_404(User, pk=pk)
+
+        if target.is_superuser and action in ('reject', 'deactivate'):
+            messages.error(request, "You can't deactivate or reject a superuser.")
+            return redirect('users')
+
+        if action == 'approve':
+            profile, _ = UserProfile.objects.get_or_create(user=target)
+            profile.is_approved = True
+            profile.approved_at = timezone.now()
+            profile.save()
+            target.is_active = True
+            target.save()
+            messages.success(request, f'{target.username} approved.')
+
+        elif action == 'reject':
+            username = target.username
+            target.delete()
+            messages.success(request, f'{username} rejected and removed.')
+
+        elif action == 'deactivate':
+            target.is_active = False
+            target.save()
+            messages.success(request, f'{target.username} deactivated.')
+
+        elif action == 'activate':
+            target.is_active = True
+            target.save()
+            # Reactivating someone also counts as (re)approving them.
+            profile, _ = UserProfile.objects.get_or_create(user=target)
+            if not profile.is_approved:
+                profile.is_approved = True
+                profile.approved_at = timezone.now()
+                profile.save()
+            messages.success(request, f'{target.username} reactivated.')
+
+        return redirect('users')
+
+    all_users = User.objects.all().order_by('-date_joined').select_related('profile')
+    pending_users = [u for u in all_users if not u.is_superuser and hasattr(u, 'profile') and not u.profile.is_approved]
+    approved_users = [u for u in all_users if u not in pending_users]
+
+    return render(request, 'tasks/users.html', {
+        'pending_users': pending_users,
+        'approved_users': approved_users,
+    })
+
+
 # ── Tasks ─────────────────────────────────────────────────────────────────────
 
-@login_required
+@approved_required
 def complete_task(request, pk):
     if request.method == 'POST':
         task = get_object_or_404(Task, pk=pk, user=request.user)
@@ -81,7 +175,7 @@ def complete_task(request, pk):
     return redirect('dashboard')
 
 
-@login_required
+@approved_required
 def delete_task(request, pk):
     if request.method == 'POST':
         task = get_object_or_404(Task, pk=pk, user=request.user)
@@ -89,7 +183,7 @@ def delete_task(request, pk):
     return redirect('dashboard')
 
 
-@login_required
+@approved_required
 def restore_task(request, pk):
     if request.method == 'POST':
         task = get_object_or_404(Task, pk=pk, user=request.user)
@@ -99,7 +193,7 @@ def restore_task(request, pk):
     return redirect('dashboard')
 
 
-@login_required
+@approved_required
 def delete_all_treasure(request):
     if request.method == 'POST':
         Task.objects.filter(user=request.user, completed=True).delete()
@@ -108,7 +202,7 @@ def delete_all_treasure(request):
 
 # ── Files ─────────────────────────────────────────────────────────────────────
 
-@login_required
+@approved_required
 def files_view(request):
     if request.method == 'POST':
         uploaded = request.FILES.get('file')
@@ -135,7 +229,7 @@ def files_view(request):
     return render(request, 'tasks/files.html', {'files': files})
 
 
-@login_required
+@approved_required
 def delete_file(request, pk):
     if request.method == 'POST':
         f = get_object_or_404(UploadedFile, pk=pk, user=request.user)
@@ -145,7 +239,7 @@ def delete_file(request, pk):
     return redirect('files')
 
 
-@login_required
+@approved_required
 def download_file(request, pk):
     f = get_object_or_404(UploadedFile, pk=pk, user=request.user)
     if not f.file or not os.path.exists(f.file.path):
@@ -166,7 +260,7 @@ def _ensure_today_logs(user):
         RoutineLog.objects.get_or_create(routine_task=rt, date=today, defaults={'user': user})
 
 
-@login_required
+@approved_required
 def routine_view(request):
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -229,7 +323,7 @@ def routine_view(request):
 
 # ── Transactions ──────────────────────────────────────────────────────────────
 
-@login_required
+@approved_required
 def transactions_view(request):
     if request.method == 'POST':
         action = request.POST.get('action')

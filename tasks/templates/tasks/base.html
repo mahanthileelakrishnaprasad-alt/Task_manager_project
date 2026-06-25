@@ -217,6 +217,11 @@ textarea.input{resize:vertical;min-height:60px}
       <a href="/transactions/" class="menu-item {% if '/transactions/' in request.path %}active{% endif %}">
         <span class="menu-icon">💰</span> Transactions
       </a>
+      {% if user.is_superuser %}
+      <a href="/users/" class="menu-item {% if '/users/' in request.path %}active{% endif %}">
+        <span class="menu-icon">👥</span> Users
+      </a>
+      {% endif %}
     </div>
   </div>
 </nav>

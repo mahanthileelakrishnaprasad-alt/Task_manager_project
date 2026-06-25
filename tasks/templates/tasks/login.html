@@ -20,13 +20,14 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-h
 .link{text-align:center;margin-top:18px;font-size:13px;color:var(--muted)}
 .link a{color:var(--teal);text-decoration:none;font-weight:600}
 .err{background:rgba(248,113,113,.12);color:var(--red);border:1px solid var(--red-dim);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px}
+.ok{background:rgba(74,222,128,.12);color:var(--green);border:1px solid var(--green-dim);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:14px}
 </style>
 </head>
 <body>
 <div class="box">
   <div class="logo">Personal<span>Hub</span></div>
   <div class="subtitle">Sign in to your workspace</div>
-  {% if messages %}{% for m in messages %}<div class="err">{{ m }}</div>{% endfor %}{% endif %}
+  {% if messages %}{% for m in messages %}<div class="{% if m.tags == 'success' %}ok{% else %}err{% endif %}">{{ m }}</div>{% endfor %}{% endif %}
   <form method="POST">
     {% csrf_token %}
     <label class="label">Username</label>

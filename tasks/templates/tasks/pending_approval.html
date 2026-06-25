@@ -1,0 +1,18 @@
+{% extends "tasks/base.html" %}
+{% block title %}Pending Approval — PersonalHub{% endblock %}
+
+{% block content %}
+
+<div class="card" style="text-align:center;padding:48px 24px;max-width:440px;margin:40px auto">
+  <div style="font-size:48px;margin-bottom:16px">⏳</div>
+  <h2 style="font-size:18px;font-weight:700;margin-bottom:10px">Waiting for Approval</h2>
+  <p style="font-size:14px;color:var(--muted2);line-height:1.6;margin-bottom:6px">
+    Your account, <strong style="color:var(--text)">{{ user.username }}</strong>, has been created
+    but a superuser still needs to approve it before you can use PersonalHub.
+  </p>
+  <p style="font-size:13px;color:var(--muted);line-height:1.6">
+    Check back soon, or reach out to your admin directly.
+  </p>
+</div>
+
+{% endblock %}
