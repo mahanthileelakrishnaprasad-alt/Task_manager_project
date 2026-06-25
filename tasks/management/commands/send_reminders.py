@@ -1,7 +1,6 @@
 """
 Sends due email reminders for one-off Tasks and recurring daily RoutineTasks.
-Uses Resend API (HTTPS) instead of SMTP — works on Render's free tier which
-blocks outbound SMTP (port 587).
+Uses Brevo (formerly Sendinblue) API over HTTPS — works on Render's free tier.
 
 Usage:
     python manage.py send_reminders
@@ -16,25 +15,26 @@ from datetime import date
 
 from tasks.models import Task, RoutineTask, RoutineLog, UserProfile
 
-RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
-FROM_EMAIL = 'PersonalHub <onboarding@resend.dev>'
+BREVO_API_KEY = os.environ.get('BREVO_API_KEY', '')
+FROM_EMAIL = 'PersonalHub <noreply@personalhub.local>'
 
 
-def _send_via_resend(to_email, subject, body):
-    """Send an email via Resend API over HTTPS. Raises on failure."""
+def _send_via_brevo(to_email, subject, body):
+    """Send an email via Brevo transactional API over HTTPS."""
     payload = json.dumps({
-        'from': FROM_EMAIL,
-        'to': [to_email],
+        'sender': {'name': 'PersonalHub', 'email': 'mahanthileelakrishnaprasad@gmail.com'},
+        'to': [{'email': to_email}],
         'subject': subject,
-        'text': body,
+        'textContent': body,
     }).encode('utf-8')
 
     req = urllib.request.Request(
-        'https://api.resend.com/emails',
+        'https://api.brevo.com/v3/smtp/email',
         data=payload,
         headers={
-            'Authorization': f'Bearer {RESEND_API_KEY}',
+            'api-key': BREVO_API_KEY,
             'Content-Type': 'application/json',
+            'Accept': 'application/json',
         },
         method='POST',
     )
@@ -43,16 +43,16 @@ def _send_via_resend(to_email, subject, body):
             return json.loads(resp.read())
     except urllib.error.HTTPError as e:
         error_body = e.read().decode('utf-8')
-        raise Exception(f"Resend {e.code}: {error_body}")
+        raise Exception(f"Brevo {e.code}: {error_body}")
 
 
 class Command(BaseCommand):
-    help = "Send due email reminders for tasks and daily routines via Resend API."
+    help = "Send due email reminders for tasks and daily routines via Brevo API."
 
     def handle(self, *args, **options):
-        if not RESEND_API_KEY:
+        if not BREVO_API_KEY:
             self.stdout.write(self.style.WARNING(
-                "RESEND_API_KEY not configured — skipping. "
+                "BREVO_API_KEY not configured — skipping. "
                 "Set this env var on Render to enable reminders."
             ))
             return
@@ -75,7 +75,7 @@ class Command(BaseCommand):
                 task.save(update_fields=['reminder_sent'])
                 continue
             try:
-                _send_via_resend(
+                _send_via_brevo(
                     to_email=email,
                     subject=f"⏰ Reminder: {task.title}",
                     body=self._task_body(task),
@@ -109,7 +109,7 @@ class Command(BaseCommand):
                 log.save(update_fields=['reminder_sent'])
                 continue
             try:
-                _send_via_resend(
+                _send_via_brevo(
                     to_email=email,
                     subject=f"⏰ Daily routine reminder: {routine.title}",
                     body=self._routine_body(routine),
