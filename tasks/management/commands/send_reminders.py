@@ -1,31 +1,55 @@
 """
 Sends due email reminders for one-off Tasks and recurring daily RoutineTasks.
-
-Intended to be run on a schedule (e.g. a Render Cron Job hitting this command
-every 5 minutes), since Render's free web service does not run background
-jobs on its own. Safe to run as often as you like — already-sent reminders
-are skipped via the `reminder_sent` flag.
+Uses Resend API (HTTPS) instead of SMTP — works on Render's free tier which
+blocks outbound SMTP (port 587).
 
 Usage:
     python manage.py send_reminders
 """
+import urllib.request
+import urllib.error
+import json
+import os
 from django.core.management.base import BaseCommand
-from django.core.mail import send_mail
-from django.conf import settings
 from django.utils import timezone
-from datetime import datetime, date
+from datetime import date
 
 from tasks.models import Task, RoutineTask, RoutineLog, UserProfile
 
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
+FROM_EMAIL = 'PersonalHub <onboarding@resend.dev>'
+
+
+def _send_via_resend(to_email, subject, body):
+    """Send an email via Resend API over HTTPS. Raises on failure."""
+    payload = json.dumps({
+        'from': FROM_EMAIL,
+        'to': [to_email],
+        'subject': subject,
+        'text': body,
+    }).encode('utf-8')
+
+    req = urllib.request.Request(
+        'https://api.resend.com/emails',
+        data=payload,
+        headers={
+            'Authorization': f'Bearer {RESEND_API_KEY}',
+            'Content-Type': 'application/json',
+        },
+        method='POST',
+    )
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        return json.loads(resp.read())
+
 
 class Command(BaseCommand):
-    help = "Send due email reminders for tasks and daily routines."
+    help = "Send due email reminders for tasks and daily routines via Resend API."
 
     def handle(self, *args, **options):
-        if not settings.EMAIL_HOST_USER or not settings.EMAIL_HOST_PASSWORD:
+        if not RESEND_API_KEY:
             self.stdout.write(self.style.WARNING(
-                "EMAIL_HOST_USER / EMAIL_HOST_PASSWORD not configured — skipping. "
-                "Set these env vars (a Gmail address + App Password) to enable reminders."
+                "RESEND_API_KEY not configured — skipping. "
+                "Set this env var on Render to enable reminders."
             ))
             return
 
@@ -43,18 +67,14 @@ class Command(BaseCommand):
         for task in due_tasks:
             email = self._email_for(task.user)
             if not email:
-                # No reminder email on file for this user — mark sent so we
-                # don't retry forever, but skip actually sending.
                 task.reminder_sent = True
                 task.save(update_fields=['reminder_sent'])
                 continue
             try:
-                send_mail(
+                _send_via_resend(
+                    to_email=email,
                     subject=f"⏰ Reminder: {task.title}",
-                    message=self._task_body(task),
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[email],
-                    fail_silently=False,
+                    body=self._task_body(task),
                 )
                 task.reminder_sent = True
                 task.save(update_fields=['reminder_sent'])
@@ -85,12 +105,10 @@ class Command(BaseCommand):
                 log.save(update_fields=['reminder_sent'])
                 continue
             try:
-                send_mail(
+                _send_via_resend(
+                    to_email=email,
                     subject=f"⏰ Daily routine reminder: {routine.title}",
-                    message=self._routine_body(routine),
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[email],
-                    fail_silently=False,
+                    body=self._routine_body(routine),
                 )
                 log.reminder_sent = True
                 log.save(update_fields=['reminder_sent'])
