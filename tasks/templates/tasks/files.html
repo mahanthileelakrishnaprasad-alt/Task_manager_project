@@ -1,0 +1,61 @@
+{% extends "tasks/base.html" %}
+{% block title %}My Files — PersonalHub{% endblock %}
+
+{% block content %}
+
+<div class="section-head">
+  <span class="section-icon">📁</span>
+  <h2>My Files</h2>
+  <span class="badge badge-blue">{{ files.count }} files</span>
+  <div class="divider"></div>
+  <button class="btn btn-sm btn-teal" onclick="document.getElementById('uploadModal').style.display='flex'">+ Add File</button>
+</div>
+
+<!-- Upload Modal -->
+<div id="uploadModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:400;align-items:center;justify-content:center;padding:16px">
+  <div class="card" style="width:100%;max-width:400px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <span style="font-weight:700;font-size:15px">Upload a File</span>
+      <button onclick="document.getElementById('uploadModal').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:20px">×</button>
+    </div>
+    <form method="POST" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <label style="font-size:13px;color:var(--muted2)">Choose file (image, PDF, text, etc.)</label>
+        <input type="file" name="file" required class="input" accept="image/*,.pdf,.txt,.md,.csv,.doc,.docx,.xlsx"/>
+        <button type="submit" class="btn btn-teal">Upload</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Files Grid -->
+<div style="display:flex;flex-direction:column;gap:10px">
+  {% if files %}
+    {% for f in files %}
+    <div class="task-card">
+      <span style="font-size:24px;flex-shrink:0">
+        {% if f.file_type == 'image' %}🖼️
+        {% elif f.file_type == 'pdf' %}📄
+        {% elif f.file_type == 'text' %}📝
+        {% else %}📎{% endif %}
+      </span>
+      <div class="task-body">
+        <div class="task-title">{{ f.name }}</div>
+        <div class="task-meta">{{ f.size_display }} · {{ f.uploaded_at|date:"d M Y, g:i A" }}</div>
+      </div>
+      <div class="task-actions">
+        <a href="{{ f.file.url }}" target="_blank" class="btn btn-sm btn-ghost-teal">↗ Open</a>
+        <a href="{% url 'download_file' f.pk %}" class="btn btn-sm btn-ghost-purple">⬇ Download</a>
+        <form method="POST" action="{% url 'delete_file' f.pk %}">{% csrf_token %}
+          <button class="btn btn-sm btn-ghost-red" onclick="return confirm('Delete this file?')">✕</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty"><div class="ei">📁</div><p>No files yet.<br/>Click "+ Add File" to upload.</p></div>
+  {% endif %}
+</div>
+
+{% endblock %}

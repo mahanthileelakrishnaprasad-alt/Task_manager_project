@@ -1,7 +1,8 @@
 from django.contrib import admin
-from .models import Task
+from .models import Task, UploadedFile, RoutineTask, RoutineLog, Transaction
 
-@admin.register(Task)
-class TaskAdmin(admin.ModelAdmin):
-    list_display = ('title', 'completed', 'created_at', 'completed_at')
-    list_filter = ('completed',)
+admin.site.register(Task)
+admin.site.register(UploadedFile)
+admin.site.register(RoutineTask)
+admin.site.register(RoutineLog)
+admin.site.register(Transaction)

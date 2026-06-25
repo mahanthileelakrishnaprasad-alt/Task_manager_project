@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: taskmaster
+    name: personalhub
     runtime: python
     buildCommand: "./build.sh"
     startCommand: "gunicorn taskmaster.wsgi:application"

@@ -1,0 +1,155 @@
+{% extends "tasks/base.html" %}
+{% block title %}Transactions — PersonalHub{% endblock %}
+
+{% block content %}
+
+<div class="section-head">
+  <span class="section-icon">💰</span>
+  <h2>Transactions</h2>
+  <div class="divider"></div>
+  {% if transactions %}
+  <form method="POST" style="display:inline">{% csrf_token %}
+    <input type="hidden" name="action" value="delete_all"/>
+    <button class="btn btn-sm btn-ghost-red" onclick="return confirm('Delete ALL transactions? This cannot be undone.')">🗑 Delete All</button>
+  </form>
+  {% endif %}
+</div>
+
+<!-- Summary -->
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px">
+  <div class="card" style="text-align:center;padding:16px">
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px">Income</div>
+    <div style="font-size:22px;font-weight:700;color:var(--green)">₹{{ total_income|floatformat:0 }}</div>
+  </div>
+  <div class="card" style="text-align:center;padding:16px">
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px">Expense</div>
+    <div style="font-size:22px;font-weight:700;color:var(--red)">₹{{ total_expense|floatformat:0 }}</div>
+  </div>
+  <div class="card" style="text-align:center;padding:16px;{% if balance >= 0 %}border-color:var(--green-dim){% else %}border-color:var(--red-dim){% endif %}">
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px">Balance</div>
+    <div style="font-size:22px;font-weight:700;color:{% if balance >= 0 %}var(--green){% else %}var(--red){% endif %}">₹{{ balance|floatformat:0 }}</div>
+  </div>
+</div>
+
+<!-- Add Transaction -->
+<div class="card" style="margin-bottom:24px">
+  <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:14px">+ Add Transaction</div>
+  <form method="POST" id="addTxnForm">{% csrf_token %}
+    <input type="hidden" name="action" value="add"/>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <input class="input" type="text" name="title" placeholder="Description (e.g. Salary, Groceries…)" required autocomplete="off"/>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <input class="input" type="number" name="amount" placeholder="Amount (₹)" min="0.01" step="0.01" required style="flex:1;min-width:120px"/>
+        <select name="transaction_type" class="input" style="flex:1;min-width:120px">
+          <option value="income">💚 Income</option>
+          <option value="expense" selected>🔴 Expense</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <select name="category" class="input" id="categorySelect" style="flex:1;min-width:160px" onchange="toggleNewCategory()">
+          <option value="">No category</option>
+          {% for c in categories %}
+          <option value="{{ c.pk }}">{{ c.name }}</option>
+          {% endfor %}
+          <option value="__new__">+ New category…</option>
+        </select>
+        <input class="input" type="text" name="new_category" id="newCategoryInput" placeholder="New category name" style="flex:1;min-width:160px;display:none"/>
+      </div>
+      <textarea class="input" name="note" placeholder="Note (optional)…" rows="2"></textarea>
+      <button type="submit" class="btn btn-teal" style="align-self:flex-start">+ Add</button>
+    </div>
+  </form>
+</div>
+
+<!-- Category Filter -->
+{% if categories %}
+<div class="section-head">
+  <span class="section-icon">🏷️</span>
+  <h2>Filter by Category</h2>
+  <div class="divider"></div>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px">
+  <a href="{% url 'transactions' %}" class="badge {% if not selected_category %}badge-teal{% else %}badge-blue{% endif %}" style="text-decoration:none">All</a>
+  {% for c in categories %}
+  <a href="?category={{ c.pk }}" class="badge {% if selected_category == c.pk|stringformat:'s' %}badge-teal{% else %}badge-blue{% endif %}" style="text-decoration:none">{{ c.name }}</a>
+  {% endfor %}
+  <a href="?category=none" class="badge {% if selected_category == 'none' %}badge-teal{% else %}badge-blue{% endif %}" style="text-decoration:none">Uncategorized</a>
+</div>
+
+<!-- Manage categories: delete category, or delete all transactions within a category -->
+<div class="card" style="margin-bottom:24px">
+  <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:12px">Manage Categories</div>
+  <div style="display:flex;flex-direction:column;gap:8px">
+    {% for c in categories %}
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="flex:1;font-size:13px">{{ c.name }}</span>
+      <form method="POST" onsubmit="return confirm('Delete all transactions in \'{{ c.name }}\'?')">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="delete_by_category"/>
+        <input type="hidden" name="category_pk" value="{{ c.pk }}"/>
+        <button class="btn btn-sm btn-ghost-gold">🗑 Transactions</button>
+      </form>
+      <form method="POST" onsubmit="return confirm('Delete category \'{{ c.name }}\'? Its transactions will become Uncategorized.')">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="delete_category"/>
+        <input type="hidden" name="category_pk" value="{{ c.pk }}"/>
+        <button class="btn btn-sm btn-ghost-red">✕ Category</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Transaction List -->
+<div class="section-head">
+  <span class="section-icon">📋</span>
+  <h2>History</h2>
+  <span class="badge badge-blue">{{ transactions.count }}</span>
+  <div class="divider"></div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:8px">
+  {% if transactions %}
+    {% for t in transactions %}
+    <div class="task-card">
+      <span style="font-size:20px;flex-shrink:0">{% if t.transaction_type == 'income' %}💚{% else %}🔴{% endif %}</span>
+      <div class="task-body">
+        <div class="task-title">{{ t.title }}</div>
+        {% if t.category %}<span class="badge badge-purple" style="margin-top:4px;display:inline-block">{{ t.category.name }}</span>{% endif %}
+        {% if t.note %}<div class="task-note">{{ t.note }}</div>{% endif %}
+        <div class="task-meta">{{ t.created_at|date:"d M Y, g:i A" }}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
+        <span style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14px;color:{% if t.transaction_type == 'income' %}var(--green){% else %}var(--red){% endif %}">
+          {% if t.transaction_type == 'income' %}+{% else %}-{% endif %}₹{{ t.amount|floatformat:0 }}
+        </span>
+        <form method="POST" action="{% url 'transactions' %}">{% csrf_token %}
+          <input type="hidden" name="action" value="delete"/>
+          <input type="hidden" name="pk" value="{{ t.pk }}"/>
+          <button class="btn btn-sm btn-ghost-red" onclick="return confirm('Delete?')">✕</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty"><div class="ei">💸</div><p>No transactions yet.<br/>Add your first one above!</p></div>
+  {% endif %}
+</div>
+
+<script>
+function toggleNewCategory(){
+  var sel = document.getElementById('categorySelect');
+  var input = document.getElementById('newCategoryInput');
+  if(sel.value === '__new__'){
+    input.style.display = 'block';
+    input.required = true;
+  } else {
+    input.style.display = 'none';
+    input.required = false;
+    input.value = '';
+  }
+}
+</script>
+
+{% endblock %}

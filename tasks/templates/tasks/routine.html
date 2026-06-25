@@ -1,0 +1,88 @@
+{% extends "tasks/base.html" %}
+{% block title %}Daily Routine — PersonalHub{% endblock %}
+
+{% block content %}
+
+<div class="section-head">
+  <span class="section-icon">🔄</span>
+  <h2>Daily Routine</h2>
+  <div class="divider"></div>
+  <form method="POST" style="display:inline">{% csrf_token %}
+    <input type="hidden" name="action" value="delete_history"/>
+    <button class="btn btn-sm btn-ghost-red" onclick="return confirm('Delete all past history? Today stays.')">🗑 History</button>
+  </form>
+</div>
+
+<!-- Progress Stats -->
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px">
+  <div class="card" style="text-align:center;padding:16px">
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px">Today</div>
+    <div style="font-size:28px;font-weight:700;color:var(--teal)">{{ today_pct }}%</div>
+    <div class="prog-wrap"><div class="prog-bar" style="width:{{ today_pct }}%;background:var(--teal)"></div></div>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px">{{ done_today }}/{{ total_today }} done</div>
+  </div>
+  <div class="card" style="text-align:center;padding:16px">
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px">This Week</div>
+    <div style="font-size:28px;font-weight:700;color:var(--purple)">{{ week_pct }}%</div>
+    <div class="prog-wrap"><div class="prog-bar" style="width:{{ week_pct }}%;background:var(--purple)"></div></div>
+  </div>
+  <div class="card" style="text-align:center;padding:16px">
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px">This Month</div>
+    <div style="font-size:28px;font-weight:700;color:var(--gold)">{{ month_pct }}%</div>
+    <div class="prog-wrap"><div class="prog-bar" style="width:{{ month_pct }}%;background:var(--gold)"></div></div>
+  </div>
+</div>
+
+<!-- Today's Routine Tasks -->
+<div class="section-head">
+  <span class="section-icon">☀️</span>
+  <h2>Today's Checklist</h2>
+  <div class="divider"></div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px">
+  {% if today_logs %}
+    {% for log in today_logs %}
+    <div class="task-card" style="{% if log.completed %}opacity:.7;{% endif %}">
+      <form method="POST" action="{% url 'routine' %}">{% csrf_token %}
+        <input type="hidden" name="action" value="toggle"/>
+        <input type="hidden" name="log_pk" value="{{ log.pk }}"/>
+        <button style="background:none;border:none;font-size:22px;cursor:pointer;flex-shrink:0">
+          {% if log.completed %}✅{% else %}⬜{% endif %}
+        </button>
+      </form>
+      <div class="task-body">
+        <div class="task-title" style="{% if log.completed %}text-decoration:line-through;color:var(--muted){% endif %}">
+          {{ log.routine_task.title }}
+        </div>
+        {% if log.completed and log.completed_at %}
+        <div class="task-meta">Done at {{ log.completed_at|date:"g:i A" }}</div>
+        {% endif %}
+      </div>
+      <div class="task-actions">
+        <form method="POST" action="{% url 'routine' %}">{% csrf_token %}
+          <input type="hidden" name="action" value="delete_routine"/>
+          <input type="hidden" name="pk" value="{{ log.routine_task.pk }}"/>
+          <button class="btn btn-sm btn-ghost-red" onclick="return confirm('Remove this routine task entirely?')">✕</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty"><div class="ei">🔄</div><p>No routine tasks yet.<br/>Add tasks below — they repeat every day!</p></div>
+  {% endif %}
+</div>
+
+<!-- Add Routine Task -->
+<div class="card">
+  <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:14px">+ Add Routine Task</div>
+  <form method="POST">{% csrf_token %}
+    <input type="hidden" name="action" value="add"/>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <input class="input" type="text" name="title" placeholder="e.g. Morning workout, Read 30 min…" required autocomplete="off" style="flex:1;min-width:200px"/>
+      <button type="submit" class="btn btn-teal">+ Add</button>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

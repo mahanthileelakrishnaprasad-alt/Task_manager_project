@@ -1,0 +1,113 @@
+{% extends "tasks/base.html" %}
+{% block title %}Today's Tasks — PersonalHub{% endblock %}
+
+{% block content %}
+
+<!-- Section: Today's Tasks -->
+<div class="section-head">
+  <span class="section-icon">⚡</span>
+  <h2>Today's Tasks</h2>
+  <span class="badge badge-teal">{{ active_tasks.count }} active</span>
+  <div class="divider"></div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:28px">
+  {% if active_tasks %}
+    {% for task in active_tasks %}
+    <div class="task-card">
+      <div class="task-body">
+        <div class="task-title">{{ task.title }}</div>
+        {% if task.note %}<div class="task-note">{{ task.note }}</div>{% endif %}
+        <div class="task-meta">Added {{ task.created_at|date:"d M, g:i A" }}</div>
+      </div>
+      <div class="task-actions">
+        <form method="POST" action="{% url 'complete_task' task.pk %}">{% csrf_token %}
+          <button class="btn btn-sm btn-ghost-teal">✓ Complete</button>
+        </form>
+        <form method="POST" action="{% url 'delete_task' task.pk %}">{% csrf_token %}
+          <button class="btn btn-sm btn-ghost-red" onclick="return confirm('Delete this task?')">✕</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty"><div class="ei">📋</div><p>No active tasks.<br/>Add one below!</p></div>
+  {% endif %}
+</div>
+
+<!-- Add Task Form -->
+<div class="card">
+  <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:14px">+ New Task</div>
+  <form method="POST">
+    {% csrf_token %}
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <input class="input" type="text" name="title" placeholder="What do you want to get done?" required autocomplete="off"/>
+      <textarea class="input" name="note" placeholder="Add a note (optional)…" rows="2"></textarea>
+      <button type="submit" class="btn btn-teal" style="align-self:flex-start">+ Add Task</button>
+    </div>
+  </form>
+</div>
+
+<!-- Treasure Box -->
+<div style="margin-top:28px">
+  <div class="section-head">
+    <span class="section-icon">🏆</span>
+    <h2>Treasure Box</h2>
+    <span class="badge badge-gold">{{ treasure_tasks.count }} done</span>
+    <div class="divider"></div>
+  </div>
+
+  <div class="treasure-box">
+    <div class="treasure-lid" onclick="toggleTreasure(this)">
+      <span>🎁</span>
+      <span class="treasure-lid-title">Completed Tasks</span>
+      <span class="treasure-lid-count">{{ treasure_tasks.count }} inside</span>
+      <span class="toggle-arrow" id="tarrow">▼</span>
+    </div>
+    <div class="treasure-content collapsed" id="tContent">
+      {% if treasure_tasks %}
+        <div style="display:flex;justify-content:flex-end;margin-bottom:4px">
+          <form method="POST" action="{% url 'delete_all_treasure' %}">{% csrf_token %}
+            <button class="btn btn-sm btn-ghost-red" onclick="return confirm('Delete ALL completed tasks?')">🗑 Delete All</button>
+          </form>
+        </div>
+        {% for task in treasure_tasks %}
+        <div class="treasure-card">
+          <span style="font-size:16px;flex-shrink:0;margin-top:1px">🥇</span>
+          <div class="task-body">
+            <div class="task-title">{{ task.title }}</div>
+            {% if task.note %}<div class="task-note">{{ task.note }}</div>{% endif %}
+            <div class="task-meta">Completed {{ task.completed_at|date:"d M, g:i A" }}</div>
+          </div>
+          <div class="task-actions">
+            <form method="POST" action="{% url 'restore_task' task.pk %}">{% csrf_token %}
+              <button class="btn btn-sm btn-ghost-gold">↩ Restore</button>
+            </form>
+            <form method="POST" action="{% url 'delete_task' task.pk %}">{% csrf_token %}
+              <button class="btn btn-sm btn-ghost-red" onclick="return confirm('Delete?')">✕</button>
+            </form>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div style="text-align:center;padding:24px;color:#5a5025">
+          <div style="font-size:28px;margin-bottom:8px">✨</div>
+          <p style="font-size:12px">Complete tasks to fill your treasure box!</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleTreasure(){
+  const c=document.getElementById('tContent');
+  const a=document.getElementById('tarrow');
+  c.classList.toggle('collapsed');
+  a.style.transform=c.classList.contains('collapsed')?'rotate(-90deg)':'';
+}
+</script>
+{% endblock %}

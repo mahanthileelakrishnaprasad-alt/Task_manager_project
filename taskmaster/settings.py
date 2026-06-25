@@ -3,10 +3,8 @@ import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-taskmaster-dev-key-change-in-prod-xyz123')
-
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-hub-dev-key-change-in-prod-xyz123')
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
-
 ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
@@ -30,12 +28,14 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+CSRF_TRUSTED_ORIGINS = ['http://127.0.0.1:8000', 'http://localhost:8000', 'https://task-manager-project-9rsr.onrender.com']
+
 ROOT_URLCONF = 'taskmaster.urls'
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'taskmaster' / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -49,8 +49,6 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'taskmaster.wsgi.application'
-
-import os
 
 DATABASES = {
     'default': {
@@ -84,3 +82,10 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+LOGIN_URL = '/login/'
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/login/'
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'

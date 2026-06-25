@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>{% block title %}PersonalHub{% endblock %}</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0c10;--surface:#111318;--card:#181c24;--card2:#1e2330;
+  --border:#252b3a;--border2:#2e3650;
+  --gold:#f0b429;--gold-dim:#7a5c10;
+  --teal:#22d3b8;--teal-dim:#0e6b5d;
+  --purple:#a78bfa;--purple-dim:#4c3580;
+  --red:#f87171;--red-dim:#7f1d1d;
+  --green:#4ade80;--green-dim:#14532d;
+  --blue:#60a5fa;--blue-dim:#1e3a8a;
+  --text:#e2e8f0;--muted:#64748b;--muted2:#94a3b8;
+  --r:10px;--r2:14px;
+}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh}
+a{color:inherit;text-decoration:none}
+button{cursor:pointer;font-family:inherit}
+
+/* ── TOP NAV ── */
+.topnav{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:200;
+  padding:0 20px;height:56px;
+  display:flex;align-items:center;gap:16px;
+}
+.nav-logo{font-weight:700;font-size:16px;letter-spacing:-.3px;white-space:nowrap}
+.nav-logo span{color:var(--teal)}
+.nav-spacer{flex:1}
+.nav-user{
+  display:flex;align-items:center;gap:10px;
+  font-size:13px;color:var(--muted2);
+}
+.nav-user strong{color:var(--text);font-weight:600}
+.btn-logout{
+  background:rgba(248,113,113,.12);color:var(--red);
+  border:1px solid rgba(248,113,113,.25);
+  font-size:12px;font-weight:600;padding:5px 12px;
+  border-radius:6px;transition:background .2s;
+}
+.btn-logout:hover{background:rgba(248,113,113,.25)}
+
+/* hamburger menu */
+.menu-btn{
+  background:var(--card);border:1px solid var(--border);
+  color:var(--text);font-size:18px;padding:6px 12px;
+  border-radius:8px;transition:background .2s;
+  position:relative;
+}
+.menu-btn:hover{background:var(--card2)}
+.dropdown-menu{
+  display:none;position:absolute;top:100%;right:0;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r2);min-width:200px;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+  overflow:hidden;z-index:300;margin-top:6px;
+}
+.dropdown-menu.open{display:block}
+.menu-item{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 18px;font-size:14px;font-weight:500;
+  color:var(--muted2);transition:background .15s,color .15s;
+  border-bottom:1px solid var(--border);
+}
+.menu-item:last-child{border-bottom:none}
+.menu-item:hover{background:var(--card);color:var(--text)}
+.menu-item.active{color:var(--teal);background:rgba(34,211,184,.07)}
+.menu-icon{font-size:16px;width:20px;text-align:center}
+.menu-wrapper{position:relative}
+
+/* ── PAGE ── */
+.page{max-width:720px;margin:0 auto;padding:28px 16px 60px}
+
+/* ── CARDS ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:20px}
+.card+.card,.card+.section-head{margin-top:24px}
+
+/* ── SECTION HEADER ── */
+.section-head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.section-head h2{font-size:15px;font-weight:700}
+.section-icon{font-size:18px}
+.divider{flex:1;height:1px;background:var(--border)}
+
+/* ── BADGES ── */
+.badge{
+  font-family:'JetBrains Mono',monospace;font-size:11px;
+  padding:3px 9px;border-radius:20px;font-weight:600;
+}
+.badge-teal{background:rgba(34,211,184,.12);color:var(--teal);border:1px solid var(--teal-dim)}
+.badge-gold{background:rgba(240,180,41,.12);color:var(--gold);border:1px solid var(--gold-dim)}
+.badge-purple{background:rgba(167,139,250,.12);color:var(--purple);border:1px solid var(--purple-dim)}
+.badge-green{background:rgba(74,222,128,.12);color:var(--green);border:1px solid var(--green-dim)}
+.badge-red{background:rgba(248,113,113,.12);color:var(--red);border:1px solid var(--red-dim)}
+.badge-blue{background:rgba(96,165,250,.12);color:var(--blue);border:1px solid var(--blue-dim)}
+
+/* ── FORM ELEMENTS ── */
+.input{
+  width:100%;background:var(--surface);border:1px solid var(--border);
+  color:var(--text);font-family:'Inter',sans-serif;font-size:14px;
+  padding:10px 14px;border-radius:8px;outline:none;transition:border-color .2s;
+}
+.input:focus{border-color:var(--teal)}
+.input::placeholder{color:var(--muted)}
+textarea.input{resize:vertical;min-height:60px}
+
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  font-family:'Inter',sans-serif;font-weight:600;font-size:13px;
+  padding:9px 18px;border-radius:8px;border:none;transition:all .2s;
+}
+.btn-teal{background:var(--teal);color:#0a0c10}
+.btn-teal:hover{background:#1ab89f}
+.btn-sm{padding:5px 12px;font-size:12px;border-radius:6px}
+.btn-ghost-teal{background:rgba(34,211,184,.1);color:var(--teal);border:1px solid var(--teal-dim)}
+.btn-ghost-teal:hover{background:rgba(34,211,184,.2)}
+.btn-ghost-red{background:rgba(248,113,113,.1);color:var(--red);border:1px solid var(--red-dim)}
+.btn-ghost-red:hover{background:rgba(248,113,113,.2)}
+.btn-ghost-gold{background:rgba(240,180,41,.1);color:var(--gold);border:1px solid var(--gold-dim)}
+.btn-ghost-gold:hover{background:rgba(240,180,41,.2)}
+.btn-ghost-purple{background:rgba(167,139,250,.1);color:var(--purple);border:1px solid var(--purple-dim)}
+.btn-ghost-purple:hover{background:rgba(167,139,250,.2)}
+
+/* ── TASK CARD ── */
+.task-card{
+  background:var(--card2);border:1px solid var(--border);
+  border-radius:var(--r);padding:14px 16px;
+  display:flex;align-items:flex-start;gap:14px;
+  transition:border-color .2s,transform .15s;
+  animation:slideIn .2s ease;
+}
+.task-card:hover{border-color:var(--border2);transform:translateY(-1px)}
+@keyframes slideIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.task-body{flex:1;min-width:0}
+.task-title{font-size:14px;font-weight:600;word-break:break-word;line-height:1.4}
+.task-note{font-size:12px;color:var(--muted2);margin-top:3px;line-height:1.5}
+.task-meta{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-top:5px}
+.task-actions{display:flex;gap:6px;flex-shrink:0;align-self:center;flex-wrap:wrap}
+
+/* ── EMPTY STATE ── */
+.empty{text-align:center;padding:36px 20px;color:var(--muted)}
+.empty .ei{font-size:36px;margin-bottom:10px}
+.empty p{font-size:13px;line-height:1.6}
+
+/* ── PROGRESS BAR ── */
+.prog-wrap{background:var(--surface);border-radius:20px;height:8px;overflow:hidden;margin-top:6px}
+.prog-bar{height:100%;border-radius:20px;transition:width .5s ease}
+
+/* ── MESSAGES ── */
+.msg-list{margin-bottom:16px}
+.msg{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:8px}
+.msg-error{background:rgba(248,113,113,.12);color:var(--red);border:1px solid var(--red-dim)}
+.msg-success{background:rgba(74,222,128,.12);color:var(--green);border:1px solid var(--green-dim)}
+
+/* ── RESPONSIVE ── */
+@media(max-width:480px){
+  .task-actions{flex-direction:column}
+  .topnav{padding:0 12px}
+}
+
+/* ── TREASURE BOX ── */
+.treasure-box{
+  background:linear-gradient(135deg,#14100a,#1a1508);
+  border:1px solid var(--gold-dim);border-radius:var(--r2);overflow:hidden;
+}
+.treasure-lid{
+  background:linear-gradient(90deg,#1e1505,#2a1f08,#1e1505);
+  border-bottom:1px solid var(--gold-dim);
+  padding:12px 18px;display:flex;align-items:center;gap:10px;
+  cursor:pointer;user-select:none;transition:background .2s;
+}
+.treasure-lid:hover{background:linear-gradient(90deg,#2a1f08,#362808,#2a1f08)}
+.treasure-lid-title{font-size:13px;font-weight:700;color:var(--gold)}
+.treasure-lid-count{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold-dim);margin-left:auto}
+.toggle-arrow{font-size:11px;color:var(--gold-dim);transition:transform .3s}
+.treasure-content{padding:14px;display:flex;flex-direction:column;gap:10px}
+.treasure-content.collapsed{display:none}
+.treasure-card{
+  background:rgba(240,180,41,.05);border:1px solid rgba(240,180,41,.15);
+  border-radius:var(--r);padding:12px 14px;
+  display:flex;align-items:flex-start;gap:12px;animation:slideIn .2s ease;
+}
+.treasure-card .task-title{color:#c8a840}
+.treasure-card .task-note{color:#6a5e30}
+.treasure-card .task-meta{color:#5a5025}
+</style>
+</head>
+<body>
+
+{% if user.is_authenticated %}
+<nav class="topnav">
+  <span class="nav-logo">Personal<span>Hub</span></span>
+  <div class="nav-spacer"></div>
+  <div class="nav-user">
+    <span>Hi, <strong>{{ user.username }}</strong></span>
+    <form method="post" action="/logout/" style="display:inline">{% csrf_token %}
+      <button type="submit" class="btn-logout">Sign out</button>
+    </form>
+  </div>
+  <div class="menu-wrapper">
+    <button class="menu-btn" onclick="toggleMenu()" id="menuBtn">☰</button>
+    <div class="dropdown-menu" id="dropMenu">
+      <a href="/" class="menu-item {% if request.path == '/' %}active{% endif %}">
+        <span class="menu-icon">⚡</span> Today's Tasks
+      </a>
+      <a href="/files/" class="menu-item {% if '/files/' in request.path %}active{% endif %}">
+        <span class="menu-icon">📁</span> My Files
+      </a>
+      <a href="/routine/" class="menu-item {% if '/routine/' in request.path %}active{% endif %}">
+        <span class="menu-icon">🔄</span> Daily Routine
+      </a>
+      <a href="/transactions/" class="menu-item {% if '/transactions/' in request.path %}active{% endif %}">
+        <span class="menu-icon">💰</span> Transactions
+      </a>
+    </div>
+  </div>
+</nav>
+{% endif %}
+
+<div class="page">
+  {% if messages %}
+  <div class="msg-list">
+    {% for message in messages %}
+    <div class="msg {% if message.tags == 'error' %}msg-error{% else %}msg-success{% endif %}">{{ message }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% block content %}{% endblock %}
+</div>
+
+<script>
+function toggleMenu(){
+  document.getElementById('dropMenu').classList.toggle('open');
+}
+document.addEventListener('click',function(e){
+  if(!document.getElementById('menuBtn').contains(e.target)&&!document.getElementById('dropMenu').contains(e.target)){
+    document.getElementById('dropMenu').classList.remove('open');
+  }
+});
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>
